@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Offer Analyzer</title>
+<style>
+:root{
+  --navy:#0f1f3d; --navy2:#1a2f52; --gold:#c9a84c; --gold2:#e8c97a;
+  --bg:#faf8f3; --surface:#ffffff; --line:#e2ddd4; --ink:#1a1a2e; --mid:#4a4a6a; --faint:#7a7a98;
+  --green:#1a7a4a; --green-bg:#edfaf3; --red:#9b1c1c; --red-bg:#fdf0f0; --amber:#7a4a00; --amber-bg:#fdf6e3;
+  --blue:#2a4a7a; --blue-bg:#eef3fb;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#11141b; --surface:#1a1f2a; --line:#2c3342; --ink:#e9eaf0; --mid:#b4b8c8; --faint:#8a90a4;
+    --green:#7fd6a5; --green-bg:#16301f; --red:#f2a0a0; --red-bg:#3a1c1c; --amber:#f0c070; --amber-bg:#352a17;
+    --blue:#a8c2ec; --blue-bg:#1b2638;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#11141b; --surface:#1a1f2a; --line:#2c3342; --ink:#e9eaf0; --mid:#b4b8c8; --faint:#8a90a4;
+  --green:#7fd6a5; --green-bg:#16301f; --red:#f2a0a0; --red-bg:#3a1c1c; --amber:#f0c070; --amber-bg:#352a17;
+  --blue:#a8c2ec; --blue-bg:#1b2638;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.serif{font-family:"Iowan Old Style",Charter,Georgia,serif}
+header.top{background:var(--navy);border-bottom:4px solid var(--gold);color:#fff;padding:22px 16px}
+.wrap{max-width:1180px;margin:0 auto;padding:0 16px}
+header.top .wrap{padding:0}
+header.top h1{margin:0 0 4px;font-size:clamp(22px,4vw,30px)}
+header.top p{margin:0;color:rgba(255,255,255,.7);font-size:14px}
+.toolbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+button,.btn{font:inherit;font-size:13px;font-weight:600;border-radius:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 12px;cursor:pointer}
+header.top button{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.25);color:#fff}
+header.top button.primary{background:var(--gold);border-color:var(--gold);color:var(--navy)}
+button:hover{filter:brightness(1.05)}
+button.danger{color:var(--red)}
+.privacy{font-size:12px;color:rgba(255,255,255,.6);margin-top:10px}
+main{padding:24px 0 60px}
+h2{font-family:"Iowan Old Style",Charter,Georgia,serif;font-size:21px;color:var(--ink);margin:28px 0 12px;padding-bottom:8px;border-bottom:2px solid var(--line)}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+label{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+input,select,textarea{font:inherit;font-size:14px;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+textarea{min-height:56px;resize:vertical}
+.hint{font-size:12px;color:var(--faint);margin-top:4px}
+.offers{display:grid;gap:16px}
+.offer{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.offer-head{background:var(--navy2);color:#fff;padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between}
+.offer-head strong{font-size:15px}
+.offer-head .actions{display:flex;gap:6px}
+.offer-head button{background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.25);color:#fff;padding:5px 10px;font-size:12px}
+.offer-body{padding:16px}
+.sub{font-size:12px;font-weight:700;color:var(--mid);margin:16px 0 8px;letter-spacing:.04em;text-transform:uppercase}
+.cont{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+.cont .row{display:flex;gap:8px;align-items:center;border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+.cont .row input[type=checkbox]{width:auto}
+.cont .row span{flex:1;font-size:14px}
+.cont .row input[type=number]{width:72px}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}
+.check input{width:auto}
+.empty{color:var(--faint);font-size:14px}
+
+.summary{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-left:6px solid var(--gold);border-radius:14px;padding:22px}
+.summary .eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold2);margin-bottom:8px}
+.summary p{margin:0 0 10px;color:rgba(255,255,255,.88)}
+.summary ul{margin:6px 0 0;padding-left:18px;color:rgba(255,255,255,.88)}
+.summary li{margin-bottom:4px}
+
+.cards{display:grid;gap:14px;grid-template-columns:repeat(auto-fill,minmax(300px,1fr))}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.card.best{border:2px solid var(--gold)}
+.card-head{background:var(--navy);color:#fff;padding:14px 16px}
+.card-head .name{font-family:"Iowan Old Style",Charter,Georgia,serif;font-size:18px;font-weight:700}
+.card-head .agent{font-size:12px;color:rgba(255,255,255,.55)}
+.price{font-family:"Iowan Old Style",Charter,Georgia,serif;font-size:24px;font-weight:700;color:var(--gold2);margin-top:8px}
+.pills{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;background:rgba(255,255,255,.12);color:#fff}
+.pill.g{background:rgba(26,122,74,.35)} .pill.r{background:rgba(155,28,28,.45)} .pill.a{background:rgba(201,168,76,.3)}
+.card-body{padding:14px 16px}
+.kv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.kv div div:first-child{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--faint)}
+.kv div div:last-child{font-size:14px;font-weight:600}
+.flag{display:flex;gap:8px;font-size:13px;line-height:1.45;padding:7px 9px;border-radius:8px;margin-bottom:6px}
+.flag b{flex:none;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding-top:2px;min-width:62px}
+.flag.critical{background:var(--red-bg);color:var(--red);border:1px solid var(--red)}
+.flag.high{background:var(--red-bg);color:var(--red)}
+.flag.medium{background:var(--amber-bg);color:var(--amber)}
+.flag.low{background:var(--blue-bg);color:var(--blue)}
+.flag.info{background:var(--bg);color:var(--mid);border:1px solid var(--line)}
+.flag.plus{background:var(--green-bg);color:var(--green)}
+
+.tablewrap{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px}
+table{border-collapse:collapse;width:100%;font-size:13px;min-width:560px}
+th{background:var(--navy);color:var(--gold2);text-align:left;padding:10px 14px;font-weight:600}
+td{padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+td:first-child{font-weight:600;color:var(--mid);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+td.win{background:var(--green-bg);color:var(--green);font-weight:700}
+td.bad{background:var(--red-bg);color:var(--red)}
+td.warn{background:var(--amber-bg);color:var(--amber)}
+.method{font-size:14px;color:var(--mid)}
+.method table{min-width:0}
+footer{text-align:center;font-size:12px;color:var(--faint);padding:24px 16px;border-top:1px solid var(--line)}
+@media print{
+  header.top .toolbar,.privacy,#inputs,#inputsHead,.no-print{display:none!important}
+  body{background:#fff}
+  .card,.panel,.tablewrap{break-inside:avoid}
+}
+</style>
+</head>
+<body><a href="../" style="display:block;padding:8px 16px;background:#0f1f3d;color:#e8c97a;font:600 13px/1.4 system-ui,sans-serif;text-decoration:none">&larr; All pages</a>
+<header class="top">
+  <div class="wrap">
+    <h1 class="serif">Offer Analyzer</h1>
+    <p>Enter the listing and each offer. The comparison, flags and summary update as you type.</p>
+    <div class="toolbar">
+      <button class="primary" id="addOffer">Add offer</button>
+      <button id="saveFile">Save to file</button>
+      <button id="loadFile">Open file</button>
+      <button id="example">Load example</button>
+      <button id="print">Print or save PDF</button>
+      <button id="clearAll">Start over</button>
+      <input type="file" id="fileInput" accept="application/json,.json" hidden>
+    </div>
+    <div class="privacy">Nothing you type leaves this browser. Drafts are kept on this device only. Use Save to file to keep a copy or move it to another computer.</div>
+  </div>
+</header>
+
+<main class="wrap">
+  <h2 id="inputsHead">Listing</h2>
+  <div id="inputs">
+    <div class="panel">
+      <div class="grid" id="propFields"></div>
+      <div class="hint" style="margin-top:10px">Loan limits default to San Mateo County 2026 (one unit, FHA and conforming both $1,249,125). Change them for another county or year. Commission and other costs are optional and only affect the net figure.</div>
+    </div>
+    <h2>Offers</h2>
+    <div class="offers" id="offerList"></div>
+  </div>
+
+  <div id="results"></div>
+</main>
+
+<footer>Decision support only. Not legal, tax or lending advice. Verify every figure against the signed offer documents and confirm loan questions with the buyer's lender.</footer>
+
+<script>
+(function(){
+"use strict";
+var KEY="offerAnalyzer.v1";
+var FIN={cash:"All cash",conventional:"Conventional",jumbo:"Jumbo",fha:"FHA",va:"VA",other:"Other"};
+var state=load()||blank();
+
+function blank(){return {property:{address:"",list:"",built:"",fhaLimit:1249125,confLimit:1249125,commissionPct:"",otherCosts:""},offers:[newOffer(1)]};}
+function newOffer(n){return {id:String(Date.now())+Math.random().toString(16).slice(2,6),buyer:"Offer "+n,agent:"",price:"",financing:"conventional",downPct:20,emd:"",closeDays:30,expires:"",pof:false,preapproval:false,
+  insp:{on:true,days:17},appr:{on:true,days:17},loan:{on:true,days:21},saleOfHome:false,gap:"",credit:"",rentBack:"",esc:{on:false,inc:"",cap:""},notes:""};}
+
+function example(){return {property:{address:"18 Lindbergh St, San Mateo, CA 94401",list:2095000,built:1930,fhaLimit:1249125,confLimit:1249125,commissionPct:"",otherCosts:""},
+offers:[
+ {id:"a",buyer:"Offer 1 (example)",agent:"",price:2195000,financing:"cash",downPct:100,emd:109750,closeDays:21,expires:"2026-05-29T17:00",pof:true,preapproval:false,insp:{on:false,days:""},appr:{on:false,days:""},loan:{on:false,days:""},saleOfHome:false,gap:"",credit:"",rentBack:"",esc:{on:false,inc:"",cap:""},notes:""},
+ {id:"b",buyer:"Offer 2 (example)",agent:"",price:2220000,financing:"conventional",downPct:20,emd:66600,closeDays:30,expires:"2026-05-30T17:00",pof:false,preapproval:true,insp:{on:true,days:10},appr:{on:false,days:""},loan:{on:true,days:21},saleOfHome:false,gap:"",credit:"",rentBack:5,esc:{on:false,inc:"",cap:""},notes:"Free 5 day rent back offered to seller."},
+ {id:"c",buyer:"Offer 3 (example)",agent:"",price:2110000,financing:"fha",downPct:3.5,emd:42200,closeDays:45,expires:"2026-06-01T17:00",pof:false,preapproval:true,insp:{on:true,days:17},appr:{on:true,days:21},loan:{on:true,days:30},saleOfHome:false,gap:"",credit:"",rentBack:"",esc:{on:true,inc:5000,cap:2250000},notes:"Personal letter included."}
+]};}
+
+function load(){try{var s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch(e){return null;}}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(state));}catch(e){}}
+
+function num(v){if(v===""||v==null)return null;var n=Number(String(v).replace(/[$,\s]/g,""));return isFinite(n)?n:null;}
+function money(n){if(n==null||!isFinite(n))return "n/a";var s=Math.round(Math.abs(n)).toLocaleString("en-US");return (n<0?"−$":"$")+s;}
+function signed(n){if(n==null)return "n/a";return (n>=0?"+":"−")+"$"+Math.round(Math.abs(n)).toLocaleString("en-US");}
+function pct(n,d){d=d==null?1:d;return n==null||!isFinite(n)?"n/a":(Math.round(n*Math.pow(10,d))/Math.pow(10,d))+"%";}
+function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
+
+/* ---------- inputs ---------- */
+function renderProperty(){
+  var p=state.property;
+  var f=[["address","Property address","text"],["list","List price","money"],["built","Year built","number"],["fhaLimit","FHA loan limit","money"],["confLimit","Conforming loan limit","money"],["commissionPct","Commission % (optional)","number"],["otherCosts","Other seller costs (optional)","money"]];
+  document.getElementById("propFields").innerHTML=f.map(function(x){
+    var wide=x[0]==="address"?' style="grid-column:1/-1"':"";
+    return '<div'+wide+'><label for="p_'+x[0]+'">'+x[1]+'</label><input id="p_'+x[0]+'" data-p="'+x[0]+'" '+(x[2]==="text"?'type="text"':'inputmode="decimal"')+' value="'+esc(p[x[0]])+'"></div>';
+  }).join("");
+}
+
+function field(o,key,lab,type,extra){
+  var v=key.split(".").reduce(function(a,k){return a==null?a:a[k];},o);
+  if(type==="check")return '<label class="check" style="text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);font-weight:500"><input type="checkbox" data-k="'+key+'" '+(v?"checked":"")+'> '+lab+'</label>';
+  if(type==="select")return '<div><label>'+lab+'</label><select data-k="'+key+'">'+Object.keys(FIN).map(function(k){return '<option value="'+k+'"'+(v===k?" selected":"")+'>'+FIN[k]+'</option>';}).join("")+'</select></div>';
+  if(type==="area")return '<div style="grid-column:1/-1"><label>'+lab+'</label><textarea data-k="'+key+'">'+esc(v)+'</textarea></div>';
+  var t=type==="text"?'type="text"':type==="dt"?'type="datetime-local"':'inputmode="decimal"';
+  return '<div><label>'+lab+'</label><input '+t+' data-k="'+key+'" value="'+esc(v)+'">'+(extra?'<div class="hint">'+extra+'</div>':'')+'</div>';
+}
+function contRow(o,key,lab){
+  return '<div class="row"><input type="checkbox" data-k="'+key+'.on" '+(o[key].on?"checked":"")+' aria-label="'+lab+' contingency"><span>'+lab+'</span><input inputmode="numeric" data-k="'+key+'.days" value="'+esc(o[key].days)+'" placeholder="days" aria-label="'+lab+' days"></div>';
+}
+function renderOffers(){
+  var el=document.getElementById("offerList");
+  if(!state.offers.length){el.innerHTML='<div class="empty">No offers yet. Use Add offer.</div>';return;}
+  el.innerHTML=state.offers.map(function(o,i){
+    return '<div class="offer" data-id="'+o.id+'"><div class="offer-head"><strong>'+esc(o.buyer||("Offer "+(i+1)))+'</strong><div class="actions"><button data-act="dup">Duplicate</button><button data-act="del">Remove</button></div></div><div class="offer-body">'+
+    '<div class="grid">'+field(o,"buyer","Buyer","text")+field(o,"agent","Buyer agent","text")+field(o,"price","Offer price","money")+field(o,"financing","Financing","select")+
+    field(o,"downPct","Down payment %","number")+field(o,"emd","Deposit (EMD) $","money")+field(o,"closeDays","Days to close","number")+field(o,"expires","Offer expires","dt")+'</div>'+
+    '<div class="sub">Contingencies (tick if the offer keeps it)</div><div class="cont">'+contRow(o,"insp","Inspection")+contRow(o,"appr","Appraisal")+contRow(o,"loan","Loan")+'</div>'+
+    '<div class="sub">Documents and other terms</div><div class="grid">'+
+    '<div>'+field(o,"pof","Proof of funds attached","check")+field(o,"preapproval","Lender preapproval attached","check")+field(o,"saleOfHome","Needs to sell their home first","check")+'</div>'+
+    field(o,"gap","Appraisal gap covered $","money","Cash the buyer will add if appraisal is low")+field(o,"credit","Credit asked from seller $","money")+field(o,"rentBack","Free rent back for seller (days)","number")+'</div>'+
+    '<div class="sub">Escalation clause</div><div class="grid">'+'<div style="align-self:end">'+field(o,"esc.on","Offer has escalation","check")+'</div>'+field(o,"esc.inc","Beats others by $","money")+field(o,"esc.cap","Up to a maximum of $","money")+'</div>'+
+    '<div class="grid" style="margin-top:12px">'+field(o,"notes","Notes","area")+'</div></div></div>';
+  }).join("");
+}
+
+function setPath(obj,path,val){var ks=path.split(".");var last=ks.pop();var t=ks.reduce(function(a,k){return a[k];},obj);t[last]=val;}
+
+document.addEventListener("input",function(e){
+  var t=e.target;
+  if(t.dataset.p){state.property[t.dataset.p]=t.value;}
+  else if(t.dataset.k){var card=t.closest(".offer");var o=state.offers.find(function(x){return x.id===card.dataset.id;});
+    setPath(o,t.dataset.k,t.type==="checkbox"?t.checked:t.value);
+    if(t.dataset.k==="buyer")card.querySelector(".offer-head strong").textContent=t.value||"Offer";}
+  else return;
+  save();renderResults();
+});
+document.addEventListener("change",function(e){if(e.target.type==="checkbox"||e.target.tagName==="SELECT"){var ev=new Event("input",{bubbles:true});e.target.dispatchEvent(ev);}});
+document.getElementById("offerList").addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;var id=b.closest(".offer").dataset.id;var i=state.offers.findIndex(function(x){return x.id===id;});
+  if(b.dataset.act==="del"){if(!confirm("Remove "+(state.offers[i].buyer||"this offer")+"?"))return;state.offers.splice(i,1);}
+  if(b.dataset.act==="dup"){var c=JSON.parse(JSON.stringify(state.offers[i]));c.id=newOffer(0).id;c.buyer=(c.buyer||"Offer")+" copy";state.offers.splice(i+1,0,c);}
+  save();renderAll();
+});
+document.getElementById("addOffer").onclick=function(){state.offers.push(newOffer(state.offers.length+1));save();renderAll();var l=document.querySelectorAll(".offer");l[l.length-1].scrollIntoView({behavior:"smooth"});};
+document.getElementById("example").onclick=function(){if(hasData()&&!confirm("Replace what you have entered with the example?"))return;state=example();save();renderAll();};
+document.getElementById("clearAll").onclick=function(){if(!confirm("Clear everything? Save to file first if you want to keep it."))return;state=blank();save();renderAll();};
+document.getElementById("print").onclick=function(){window.print();};
+document.getElementById("saveFile").onclick=function(){
+  var name=(state.property.address||"offers").replace(/[^a-z0-9]+/gi,"_").replace(/^_|_$/g,"")+".json";
+  var a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(state,null,2)],{type:"application/json"}));a.download=name;document.body.appendChild(a);a.click();setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},500);
+};
+document.getElementById("loadFile").onclick=function(){document.getElementById("fileInput").click();};
+document.getElementById("fileInput").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(!d.property||!Array.isArray(d.offers))throw 0;state=d;save();renderAll();}catch(x){alert("That file is not an Offer Analyzer save file.");}};r.readAsText(f);e.target.value="";};
+function hasData(){return state.offers.some(function(o){return num(o.price);})||state.property.address;}
+
+/* ---------- analysis ---------- */
+function analyze(){
+  var p=state.property,list=num(p.list),built=num(p.built),fhaL=num(p.fhaLimit),confL=num(p.confLimit),comm=num(p.commissionPct)||0,other=num(p.otherCosts)||0;
+  var priced=state.offers.filter(function(o){return num(o.price);});
+  return priced.map(function(o){
+    var price=num(o.price),eff=price,escNote=null;
+    if(o.esc.on){
+      var inc=num(o.esc.inc)||0,cap=num(o.esc.cap);
+      var others=priced.filter(function(x){return x!==o;}).map(function(x){return num(x.price);});
+      if(others.length&&cap){var target=Math.max.apply(null,others)+inc;eff=Math.max(price,Math.min(cap,target));
+        escNote=eff>price?"Escalates to "+money(eff)+" against the highest other offer ("+money(Math.max.apply(null,others))+")"+(eff===cap?", which hits the cap":"")+".":"Does not escalate: no other offer is above "+money(price)+".";}
+    }
+    var cash=o.financing==="cash",down=cash?100:(num(o.downPct)||0);
+    var loanAmt=cash?0:eff*(1-down/100);
+    var emd=num(o.emd),emdPct=emd!=null?emd/eff*100:null;
+    var credit=num(o.credit)||0,gap=num(o.gap)||0;
+    var net=eff-credit-eff*comm/100-other;
+    var flags=[],pts=0;
+    function add(sev,pen,text){flags.push({sev:sev,pen:pen,text:text});pts+=pen;}
+
+    if(o.financing==="fha"&&fhaL&&loanAmt>fhaL)add("critical",40,"FHA loan of about "+money(loanAmt)+" is "+money(loanAmt-fhaL)+" over the county FHA limit of "+money(fhaL)+". As written, this offer cannot be financed with FHA. Ask the buyer's lender to explain the preapproval before treating this offer as real.");
+    if(o.financing==="conventional"&&confL&&loanAmt>confL)add("low",3,"Loan of about "+money(loanAmt)+" is above the conforming limit ("+money(confL)+"), so it is really a jumbo loan. Jumbo underwriting is usually stricter. Confirm the preapproval says jumbo.");
+    if(o.financing==="jumbo")add("low",3,"Jumbo loan. Underwriting is usually stricter than for a conforming loan.");
+    if(cash&&!o.pof)add("high",15,"Cash offer without proof of funds. Ask for a recent statement showing the full amount.");
+    if(!cash&&!o.preapproval)add("high",15,"No lender preapproval attached.");
+    if(o.saleOfHome)add("high",20,"Buyer must sell their current home first. This is the least certain kind of offer.");
+    if(o.loan.on)add(num(o.loan.days)>21?"high":"medium",num(o.loan.days)>21?15:10,"Loan contingency ("+(o.loan.days||"?")+" days). Buyer can cancel and keep their deposit if financing fails in that window.");
+    if(o.appr.on){var over=list?eff-list:0;add(over>0?"high":"medium",over>0?15:10,"Appraisal contingency ("+(o.appr.days||"?")+" days)."+(over>0?" Price is "+money(over)+" over list, so a low appraisal is a real possibility.":"")+(gap?" Buyer covers a gap up to "+money(gap)+".":""));}
+    else if(!cash&&list&&eff>list)add("info",0,"Appraisal waived on a financed offer. If the home appraises low, the buyer must bring the difference in cash. Confirm they have it.");
+    if(o.insp.on)add("medium",num(o.insp.days)>14?9:6,"Inspection contingency ("+(o.insp.days||"?")+" days). Expect a repair request or price renegotiation."+(built&&built<1960?" Older home ("+built+") makes findings more likely.":""));
+    if((o.financing==="fha"||o.financing==="va"))add("medium",8,FIN[o.financing]+" appraisals check property condition. The lender can require repairs before closing."+(built&&built<1978?" Built before 1978, so peeling paint will be flagged.":""));
+    if(!cash&&down<10)add("medium",5,"Low down payment ("+pct(down)+"). Less cushion if anything changes in underwriting.");
+    if(emdPct!=null&&emdPct<3)add("low",3,"Deposit is "+pct(emdPct)+" of price. A smaller deposit means less at stake for the buyer if they walk.");
+    if(emd==null)add("low",3,"Deposit amount not entered.");
+    var cd=num(o.closeDays);if(cd&&cd>30)add("low",3,cd+" days to close. Longer carrying costs and more time for things to change.");
+    if(o.esc.on)add("info",0,(escNote||"Escalation clause entered without a cap, so it was not applied.")+" Escalation normally depends on a real competing offer the buyer can see. Read the clause terms closely.");
+    if(o.expires){var ex=new Date(o.expires);if(!isNaN(ex)&&ex<new Date())add("info",0,"Offer expired "+ex.toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})+".");}
+    if(num(o.rentBack))add("plus",0,"Buyer offers the seller a free "+num(o.rentBack)+" day rent back after closing.");
+    if(credit)add("info",0,"Asks the seller for a "+money(credit)+" credit, already taken out of net.");
+    if(cash&&!o.insp.on&&!o.appr.on&&!o.loan.on&&o.pof)add("plus",0,"Cash, proof of funds, and no contingencies.");
+    var cert=Math.max(0,100-pts);
+    return {o:o,price:price,eff:eff,overList:list!=null?eff-list:null,cash:cash,down:down,loanAmt:loanAmt,emd:emd,emdPct:emdPct,net:net,flags:flags,cert:cert,
+      level:flags.some(function(f){return f.sev==="critical";})?"Very low":cert>=85?"High":cert>=65?"Moderate":"Low",
+      conts:["insp","appr","loan"].filter(function(k){return o[k].on;}).map(function(k){return {insp:"inspection",appr:"appraisal",loan:"loan"}[k]+" ("+(o[k].days||"?")+" days)";})};
+  });
+}
+
+function name(r){return r.o.buyer||"Unnamed offer";}
+function list3(a){return a.length<2?a.join(""):a.slice(0,-1).join(", ")+" and "+a[a.length-1];}
+
+function summary(rs){
+  if(rs.length<2)return '<p>Enter at least two offers with prices to see a comparison.</p>';
+  var isCrit=function(r){return r.flags.some(function(f){return f.sev==="critical";});};
+  var crit=rs.filter(isCrit),ok=rs.filter(function(r){return !isCrit(r);}),h="";
+  var byNet=rs.slice().sort(function(a,b){return b.net-a.net;});
+  if(crit.length)h+='<p><strong>Set aside for now:</strong> '+crit.map(function(r){return esc(name(r));}).join(", ")+(crit.length>1?' have':' has')+' a problem that may make '+(crit.length>1?'them':'it')+' unworkable as written (see the card). '+(crit.length>1?'They are':'It is')+' left out of the comparison below until resolved.</p>';
+  if(ok.length<2){h+=ok.length?'<p>Only <strong>'+esc(name(ok[0]))+'</strong> is workable as written.</p>':'';
+    return h+'<ul>'+byNet.map(function(r){return '<li>'+esc(name(r))+': '+money(r.eff)+', certainty '+r.cert+' ('+r.level.toLowerCase()+')</li>';}).join("")+'</ul>';}
+  var okNet=ok.slice().sort(function(a,b){return b.net-a.net;}),byCert=ok.slice().sort(function(a,b){return b.cert-a.cert||b.net-a.net;});
+  var topN=okNet[0],topC=byCert[0];
+  var label=state.property.commissionPct||state.property.otherCosts?"nets":"is";
+  if(topN===topC)h+='<p><strong>'+esc(name(topN))+'</strong> leads on both price and certainty of closing ('+money(topN.net)+', certainty '+topN.cert+' of 100).</p>';
+  else{
+    var d=topN.net-topC.net;
+    h+='<p><strong>'+esc(name(topN))+'</strong> '+label+' '+money(d)+' more than <strong>'+esc(name(topC))+'</strong>. '+esc(name(topC))+' is more likely to close (certainty '+topC.cert+' versus '+topN.cert+').</p>';
+    h+='<p>The seller\'s real question: is '+money(d)+' worth taking on '+(topN.conts.length?'its '+list3(topN.conts)+' contingenc'+(topN.conts.length>1?'ies':'y'):'the risks listed for '+esc(name(topN)))+(topN.o.financing!=="cash"&&!topC.cash?'':topN.o.financing!=="cash"?', plus '+(/^(FHA|VA)$/.test(FIN[topN.o.financing])?FIN[topN.o.financing]:FIN[topN.o.financing].toLowerCase())+' financing instead of cash':'')+'? '+
+      'For scale, '+money(d)+' is '+pct(d/topN.eff*100,2)+' of the price.</p>';
+    h+='<p>Common next steps (standard practice, not a recommendation): counter '+esc(name(topN))+' to shorten or remove contingencies, or ask '+esc(name(topC))+' whether they will raise their price.</p>';
+  }
+  h+='<ul>'+byNet.map(function(r,i){return '<li>'+esc(name(r))+': '+money(r.eff)+(r.eff!==r.price?' (escalated from '+money(r.price)+')':'')+', certainty '+r.cert+' ('+r.level.toLowerCase()+')</li>';}).join("")+'</ul>';
+  return h;
+}
+
+function renderResults(){
+  var rs=analyze(),el=document.getElementById("results");
+  if(!rs.length){el.innerHTML="";return;}
+  var p=state.property,list=num(p.list);
+  var best=rs.slice().sort(function(a,b){return b.cert-a.cert||b.net-a.net;})[0];
+  var hasCosts=num(p.commissionPct)||num(p.otherCosts);
+  var h='<h2>Summary'+(p.address?' for '+esc(p.address):'')+'</h2><div class="summary"><div class="eyebrow">What the numbers say'+(list?' · list '+money(list):'')+'</div>'+summary(rs)+'</div>';
+
+  h+='<h2>Offers</h2><div class="cards">'+rs.map(function(r){
+    var o=r.o;var sevOrder={critical:0,high:1,medium:2,low:3,plus:4,info:5};
+    var fl=r.flags.slice().sort(function(a,b){return sevOrder[a.sev]-sevOrder[b.sev];});
+    return '<div class="card'+(r===best&&rs.length>1?' best':'')+'"><div class="card-head"><div class="name">'+esc(name(r))+'</div>'+(o.agent?'<div class="agent">'+esc(o.agent)+'</div>':'')+
+      '<div class="price">'+money(r.eff)+'</div>'+(r.eff!==r.price?'<div class="agent">Written at '+money(r.price)+', escalated</div>':'')+
+      '<div class="pills">'+(r.overList!=null?'<span class="pill '+(r.overList>0?'g':r.overList<0?'r':'a')+'">'+signed(r.overList)+' vs list</span>':'')+
+      '<span class="pill '+(r.level==="High"?'g':r.level==="Moderate"?'a':'r')+'">Certainty '+r.cert+' · '+r.level+'</span></div></div>'+
+      '<div class="card-body"><div class="kv">'+
+      '<div><div>Financing</div><div>'+FIN[o.financing]+'</div></div>'+
+      '<div><div>Down payment</div><div>'+(r.cash?'100%':money(r.eff*r.down/100)+' ('+pct(r.down)+')')+'</div></div>'+
+      '<div><div>Loan amount</div><div>'+(r.cash?'None':money(r.loanAmt))+'</div></div>'+
+      '<div><div>Deposit</div><div>'+(r.emd!=null?money(r.emd)+' ('+pct(r.emdPct)+')':'n/a')+'</div></div>'+
+      '<div><div>Days to close</div><div>'+(o.closeDays||'n/a')+'</div></div>'+
+      '<div><div>'+(hasCosts?'Est. net to seller':'Price after credits')+'</div><div>'+money(r.net)+'</div></div></div>'+
+      fl.map(function(f){return '<div class="flag '+f.sev+'"><b>'+(f.sev==="plus"?"Plus":f.sev)+'</b><span>'+esc(f.text)+'</span></div>';}).join("")+
+      (o.notes?'<div class="hint" style="margin-top:8px">Notes: '+esc(o.notes)+'</div>':'')+'</div></div>';
+  }).join("")+'</div>';
+
+  function rowMax(lab,vals,fmt,better){var b=better==="low"?Math.min.apply(null,vals.filter(function(v){return v!=null;})):Math.max.apply(null,vals.filter(function(v){return v!=null;}));
+    return '<tr><td>'+lab+'</td>'+vals.map(function(v){return '<td'+(v===b&&rs.length>1?' class="win"':'')+'>'+fmt(v)+'</td>';}).join("")+'</tr>';}
+  function rowTxt(lab,cells){return '<tr><td>'+lab+'</td>'+cells.map(function(c){return '<td'+(c[1]?' class="'+c[1]+'"':'')+'>'+c[0]+'</td>';}).join("")+'</tr>';}
+  function cont(r,k){var c=r.o[k];return c.on?["Yes · "+(c.days||"?")+" days","bad"]:["Waived","win"];}
+  h+='<h2>Side by side</h2><div class="tablewrap"><table><thead><tr><th></th>'+rs.map(function(r){return '<th>'+esc(name(r))+'</th>';}).join("")+'</tr></thead><tbody>'+
+    rowMax("Price",rs.map(function(r){return r.eff;}),money)+
+    (list?rowMax("Versus list",rs.map(function(r){return r.overList;}),signed):"")+
+    rowMax(hasCosts?"Est. net to seller":"Price after credits",rs.map(function(r){return r.net;}),money)+
+    rowTxt("Financing",rs.map(function(r){return [FIN[r.o.financing],r.cash?"win":(r.o.financing==="fha"||r.o.financing==="va")?"warn":""];}))+
+    rowMax("Down payment %",rs.map(function(r){return r.down;}),function(v){return pct(v);})+
+    rowMax("Deposit",rs.map(function(r){return r.emd;}),money)+
+    rowMax("Days to close",rs.map(function(r){return num(r.o.closeDays);}),function(v){return v==null?"n/a":v;},"low")+
+    rowTxt("Inspection contingency",rs.map(function(r){return cont(r,"insp");}))+
+    rowTxt("Appraisal contingency",rs.map(function(r){return cont(r,"appr");}))+
+    rowTxt("Loan contingency",rs.map(function(r){return r.cash?["None (cash)","win"]:cont(r,"loan");}))+
+    rowTxt("Other terms",rs.map(function(r){var t=[];if(r.o.esc.on)t.push("Escalation to "+money(num(r.o.esc.cap)));if(num(r.o.rentBack))t.push("Free "+num(r.o.rentBack)+" day rent back");if(num(r.o.credit))t.push("Credit "+money(num(r.o.credit)));if(r.o.saleOfHome)t.push("Sale of home");return [t.join("<br>")||"None",""];}))+
+    rowTxt("Red flags",rs.map(function(r){var n=r.flags.filter(function(f){return f.sev==="critical"||f.sev==="high";}).length;return [n?n+" serious":"None serious",n?"bad":"win"];}))+
+    rowMax("Certainty score",rs.map(function(r){return r.cert;}),function(v){return v+" / 100";})+
+  '</tbody></table></div>';
+
+  h+='<h2 class="no-print">How the certainty score works</h2><div class="panel method no-print"><p style="margin-top:0">Each offer starts at 100. Points come off for things that let a buyer cancel or that commonly delay closing. These weights are judgment calls based on standard practice, not on data about how often offers fail. Use the score to sort and to start a conversation, not as a prediction.</p>'+
+    '<div class="tablewrap" style="border:none"><table><tbody>'+
+    [["FHA loan above county FHA limit","−40, marked critical"],["Needs to sell their home first","−20"],["Loan contingency","−10 (−15 if over 21 days)"],["Appraisal contingency","−10 (−15 if price is above list)"],["No proof of funds (cash) or no preapproval (financed)","−15"],["Inspection contingency","−6 (−9 if over 14 days)"],["FHA or VA financing (condition rules)","−8"],["Down payment under 10%","−5"],["Deposit under 3% or missing","−3"],["More than 30 days to close","−3"],["Jumbo loan","−3"]].map(function(x){return '<tr><td>'+x[0]+'</td><td>'+x[1]+'</td></tr>';}).join("")+
+    '</tbody></table></div><p>Price is never mixed into the score. The summary shows price and certainty separately so the trade off stays visible.</p></div>';
+  el.innerHTML=h;
+}
+
+function renderAll(){renderProperty();renderOffers();renderResults();}
+renderAll();
+})();
+</script>
+</body>
+</html>
