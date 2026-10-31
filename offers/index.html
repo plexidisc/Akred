@@ -63,6 +63,17 @@ textarea{min-height:56px;resize:vertical}
 .cont .row input[type=number]{width:72px}
 .check{display:flex;gap:8px;align-items:center;font-size:14px}
 .check input{width:auto}
+.chk-found{outline:2px solid #d9a400;outline-offset:1px;background:#fff8dc!important;color:#1a1a2e!important}
+.chk-missing{outline:2px solid #c0392b;outline-offset:1px}
+.review{border:2px solid #d9a400;border-radius:12px;padding:14px;margin-bottom:16px;background:var(--amber-bg);color:var(--ink)}
+.review-head{font-size:14px;margin-bottom:10px}.review-head strong{display:block;margin-bottom:2px}
+.review-warn{background:var(--red-bg);color:var(--red);border-radius:8px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+.rtable{min-width:520px}.rtable td{font-size:13px}.rtable td.snip{color:var(--mid);font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.rtable tr.missing td:nth-child(2){color:var(--red)}
+.primary-btn{margin-top:10px;background:var(--navy);color:#fff;border-color:var(--navy)}
+.import-status{background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;padding:10px 14px;font-size:14px;margin-bottom:16px}
+.dropzone{border:2px dashed var(--line);border-radius:14px;padding:18px;text-align:center;color:var(--mid);font-size:14px;margin-bottom:16px;background:var(--surface)}
+.dropzone.over{border-color:var(--gold);background:var(--amber-bg)}
 .empty{color:var(--faint);font-size:14px}
 
 .summary{background:linear-gradient(135deg,var(--navy),var(--navy2));color:#fff;border-left:6px solid var(--gold);border-radius:14px;padding:22px}
@@ -117,15 +128,17 @@ footer{text-align:center;font-size:12px;color:var(--faint);padding:24px 16px;bor
 <header class="top">
   <div class="wrap">
     <h1 class="serif">Offer Analyzer</h1>
-    <p>Enter the listing and each offer. The comparison, flags and summary update as you type.</p>
+    <p>Import offer PDFs or enter offers by hand. The comparison, flags and summary update as you go.</p>
     <div class="toolbar">
-      <button class="primary" id="addOffer">Add offer</button>
+      <button class="primary" id="importPdf">Import PDF offers</button>
+      <button id="addOffer">Add offer by hand</button>
       <button id="saveFile">Save to file</button>
       <button id="loadFile">Open file</button>
       <button id="example">Load example</button>
       <button id="print">Print or save PDF</button>
       <button id="clearAll">Start over</button>
       <input type="file" id="fileInput" accept="application/json,.json" hidden>
+      <input type="file" id="pdfInput" accept="application/pdf,.pdf" multiple hidden>
     </div>
     <div class="privacy">Nothing you type leaves this browser. Drafts are kept on this device only. Use Save to file to keep a copy or move it to another computer.</div>
   </div>
@@ -139,6 +152,8 @@ footer{text-align:center;font-size:12px;color:var(--faint);padding:24px 16px;bor
       <div class="hint" style="margin-top:10px">Loan limits default to San Mateo County 2026 (one unit, FHA and conforming both $1,249,125). Change them for another county or year. Commission and other costs are optional and only affect the net figure.</div>
     </div>
     <h2>Offers</h2>
+    <div class="import-status" id="importStatus" hidden></div>
+    <div class="dropzone" id="dropzone">Drop offer PDFs here, or use <strong>Import PDF offers</strong>. Each PDF becomes one offer. The file is read on this computer and never uploaded.</div>
     <div class="offers" id="offerList"></div>
   </div>
 
@@ -199,7 +214,7 @@ function renderOffers(){
   var el=document.getElementById("offerList");
   if(!state.offers.length){el.innerHTML='<div class="empty">No offers yet. Use Add offer.</div>';return;}
   el.innerHTML=state.offers.map(function(o,i){
-    return '<div class="offer" data-id="'+o.id+'"><div class="offer-head"><strong>'+esc(o.buyer||("Offer "+(i+1)))+'</strong><div class="actions"><button data-act="dup">Duplicate</button><button data-act="del">Remove</button></div></div><div class="offer-body">'+
+    return '<div class="offer" data-id="'+o.id+'"><div class="offer-head"><strong>'+esc(o.buyer||("Offer "+(i+1)))+'</strong><div class="actions"><button data-act="dup">Duplicate</button><button data-act="del">Remove</button></div></div><div class="offer-body">'+reviewBanner(o)+
     '<div class="grid">'+field(o,"buyer","Buyer","text")+field(o,"agent","Buyer agent","text")+field(o,"price","Offer price","money")+field(o,"financing","Financing","select")+
     field(o,"downPct","Down payment %","number")+field(o,"emd","Deposit (EMD) $","money")+field(o,"closeDays","Days to close","number")+field(o,"expires","Offer expires","dt")+'</div>'+
     '<div class="sub">Contingencies (tick if the offer keeps it)</div><div class="cont">'+contRow(o,"insp","Inspection")+contRow(o,"appr","Appraisal")+contRow(o,"loan","Loan")+'</div>'+
@@ -209,6 +224,7 @@ function renderOffers(){
     '<div class="sub">Escalation clause</div><div class="grid">'+'<div style="align-self:end">'+field(o,"esc.on","Offer has escalation","check")+'</div>'+field(o,"esc.inc","Beats others by $","money")+field(o,"esc.cap","Up to a maximum of $","money")+'</div>'+
     '<div class="grid" style="margin-top:12px">'+field(o,"notes","Notes","area")+'</div></div></div>';
   }).join("");
+  markPending();
 }
 
 function setPath(obj,path,val){var ks=path.split(".");var last=ks.pop();var t=ks.reduce(function(a,k){return a[k];},obj);t[last]=val;}
@@ -218,6 +234,8 @@ document.addEventListener("input",function(e){
   if(t.dataset.p){state.property[t.dataset.p]=t.value;}
   else if(t.dataset.k){var card=t.closest(".offer");var o=state.offers.find(function(x){return x.id===card.dataset.id;});
     setPath(o,t.dataset.k,t.type==="checkbox"?t.checked:t.value);
+    if(o.review&&o.review.pending[t.dataset.k]){delete o.review.pending[t.dataset.k];var tg=t.type==="checkbox"?(t.closest(".row")||t.closest("label")):t;if(tg)tg.classList.remove("chk-found","chk-missing");
+      if(!Object.keys(o.review.pending).length){save();renderOffers();}}
     if(t.dataset.k==="buyer")card.querySelector(".offer-head strong").textContent=t.value||"Offer";}
   else return;
   save();renderResults();
@@ -225,10 +243,18 @@ document.addEventListener("input",function(e){
 document.addEventListener("change",function(e){if(e.target.type==="checkbox"||e.target.tagName==="SELECT"){var ev=new Event("input",{bubbles:true});e.target.dispatchEvent(ev);}});
 document.getElementById("offerList").addEventListener("click",function(e){
   var b=e.target.closest("button");if(!b)return;var id=b.closest(".offer").dataset.id;var i=state.offers.findIndex(function(x){return x.id===id;});
+  if(b.dataset.act==="reviewed"){state.offers[i].review.pending={};}
   if(b.dataset.act==="del"){if(!confirm("Remove "+(state.offers[i].buyer||"this offer")+"?"))return;state.offers.splice(i,1);}
   if(b.dataset.act==="dup"){var c=JSON.parse(JSON.stringify(state.offers[i]));c.id=newOffer(0).id;c.buyer=(c.buyer||"Offer")+" copy";state.offers.splice(i+1,0,c);}
   save();renderAll();
 });
+document.getElementById("importPdf").onclick=function(){document.getElementById("pdfInput").click();};
+document.getElementById("pdfInput").onchange=function(e){var f=[].slice.call(e.target.files);e.target.value="";if(f.length)importPdfs(f);};
+(function(){var dz=document.getElementById("dropzone");
+  ["dragenter","dragover"].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.add("over");});});
+  ["dragleave","drop"].forEach(function(ev){dz.addEventListener(ev,function(e){e.preventDefault();dz.classList.remove("over");});});
+  dz.addEventListener("drop",function(e){var f=[].slice.call(e.dataTransfer.files).filter(function(x){return /pdf$/i.test(x.type)||/\.pdf$/i.test(x.name);});if(f.length)importPdfs(f);});
+  window.addEventListener("dragover",function(e){e.preventDefault();});window.addEventListener("drop",function(e){if(!dz.contains(e.target))e.preventDefault();});})();
 document.getElementById("addOffer").onclick=function(){state.offers.push(newOffer(state.offers.length+1));save();renderAll();var l=document.querySelectorAll(".offer");l[l.length-1].scrollIntoView({behavior:"smooth"});};
 document.getElementById("example").onclick=function(){if(hasData()&&!confirm("Replace what you have entered with the example?"))return;state=example();save();renderAll();};
 document.getElementById("clearAll").onclick=function(){if(!confirm("Clear everything? Save to file first if you want to keep it."))return;state=blank();save();renderAll();};
@@ -240,6 +266,130 @@ document.getElementById("saveFile").onclick=function(){
 document.getElementById("loadFile").onclick=function(){document.getElementById("fileInput").click();};
 document.getElementById("fileInput").onchange=function(e){var f=e.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(){try{var d=JSON.parse(r.result);if(!d.property||!Array.isArray(d.offers))throw 0;state=d;save();renderAll();}catch(x){alert("That file is not an Offer Analyzer save file.");}};r.readAsText(f);e.target.value="";};
 function hasData(){return state.offers.some(function(o){return num(o.price);})||state.property.address;}
+
+/* ---------- PDF import ---------- */
+var PDFJS="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/";
+var LABELS={buyer:"Buyer",agent:"Buyer agent",price:"Offer price",financing:"Financing",downPct:"Down payment %",emd:"Deposit",closeDays:"Days to close",expires:"Offer expires",
+  "insp.on":"Inspection contingency","insp.days":"Inspection days","appr.on":"Appraisal contingency","appr.days":"Appraisal days","loan.on":"Loan contingency","loan.days":"Loan days",
+  saleOfHome:"Sale of buyer's home","esc.on":"Escalation","esc.inc":"Escalation increment","esc.cap":"Escalation cap",gap:"Appraisal gap",credit:"Seller credit",rentBack:"Rent back days",pof:"Proof of funds",preapproval:"Preapproval"};
+function loadPdfJs(){
+  if(window.pdfjsLib)return Promise.resolve(window.pdfjsLib);
+  return new Promise(function(res,rej){var s=document.createElement("script");s.src=PDFJS+"pdf.min.js";
+    s.onload=function(){window.pdfjsLib.GlobalWorkerOptions.workerSrc=PDFJS+"pdf.worker.min.js";res(window.pdfjsLib);};
+    s.onerror=function(){rej(new Error("Could not load the PDF reader. Check your internet connection."));};document.head.appendChild(s);});
+}
+/* Rebuild readable lines from a PDF, including values typed into fillable form fields and check boxes. */
+function pdfToText(buf){
+  return loadPdfJs().then(function(lib){return lib.getDocument({data:buf}).promise;}).then(function(doc){
+    var pages=[];for(var i=1;i<=doc.numPages;i++)pages.push(i);
+    return Promise.all(pages.map(function(n){return doc.getPage(n).then(function(pg){
+      return Promise.all([pg.getTextContent(),pg.getAnnotations()]).then(function(r){
+        var items=r[0].items.filter(function(t){return t.str&&t.str.trim();}).map(function(t){return {x:t.transform[4],y:t.transform[5],s:t.str};});
+        var formVals=0;
+        r[1].forEach(function(a){if(a.subtype!=="Widget"||!a.rect)return;var v=null;
+          if(a.checkBox||a.radioButton){var on=a.fieldValue&&a.fieldValue!=="Off"&&(a.checkBox||a.fieldValue===a.buttonValue);v=on?"[X]":"[ ]";if(on)formVals++;}
+          else if(a.fieldValue!=null&&String(a.fieldValue).trim()){v=Array.isArray(a.fieldValue)?a.fieldValue.join(", "):String(a.fieldValue);formVals++;}
+          if(v!=null)items.push({x:a.rect[0],y:(a.rect[1]+a.rect[3])/2-3,s:v});});
+        items.sort(function(a,b){return b.y-a.y||a.x-b.x;});
+        var lines=[],cur=null;
+        items.forEach(function(t){if(!cur||Math.abs(cur.y-t.y)>4){cur={y:t.y,parts:[]};lines.push(cur);}cur.parts.push(t);});
+        return {text:lines.map(function(l){return l.parts.sort(function(a,b){return a.x-b.x;}).map(function(p){return p.s;}).join(" ").replace(/\s+/g," ");}).join("\n"),formVals:formVals};
+      });});}));
+  }).then(function(ps){return {text:ps.map(function(p){return p.text;}).join("\n\f\n"),formVals:ps.reduce(function(a,p){return a+p.formVals;},0)};});
+}
+var CHK="(?:\\[X\\]|\\[x\\]|☒|☑|✔|✓|■|\\bX\\b)";
+function moneyIn(s){var n=Number(String(s).replace(/[$,\s]/g,""));return isFinite(n)?n:null;}
+function parseOfferText(text,file){
+  var o=newOffer(state.offers.length+1),found={},warn=[];
+  function snip(m){var i=Math.max(0,m.index-25),j=Math.min(text.length,m.index+m[0].length+25);return text.slice(i,j).replace(/\s+/g," ").trim();}
+  function first(re){re.lastIndex=0;return re.exec(text);}
+  function set(k,v,m,how){setPath(o,k,v);found[k]={s:how||"found",snip:m?snip(m):""};}
+  var head=text.slice(0,1500);
+  if(/COUNTER\s*OFFER/i.test(head))warn.push("This looks like a counter offer, not the original offer. Only what is written in it was read. Apply its changes to the original offer by hand.");
+  if(/ADDENDUM/i.test(head)&&!/PURCHASE\s+AGREEMENT/i.test(head))warn.push("This looks like an addendum. Apply its terms to the main offer by hand.");
+  var m;
+  if((m=first(/OFFER\s+FROM\s*:?\s*(.{3,140}?)\s*\(?\s*["“”']?\s*Buyer/i))&&m[1].replace(/[_\s]/g,"").length>2)set("buyer",m[1].replace(/_+/g," ").replace(/\s+/g," ").trim(),m);
+  else if((m=first(/\bfrom\s+([A-Z][^\n(]{2,80}?)\s*\(\s*["“”']?\s*Buyer/))&&!/\d/.test(m[1]))set("buyer",m[1].trim(),m);
+  else if((m=first(/^\s*Buyer\(?s?\)?\s*(?:Name)?s?\s*:\s*(.{3,100})$/im)))set("buyer",m[1].trim(),m);
+  if((m=first(/Buyer'?s?\s+Brokerage\s+Firm\s*:?\s*(.{3,90}?)\s+(?:License|Lic\b|DRE|CalBRE)/i)))set("agent",m[1].replace(/_+/g," ").trim(),m);
+  var priceRe=/(?:Purchase\s+Price|Offer(?:ing)?\s+Price|Price\s+Offered)[^$\n]{0,80}\$\s*([\d,]{5,}(?:\.\d\d)?)/gi,pr=null;
+  while((m=priceRe.exec(text))){var v=moneyIn(m[1]);if(v>=50000){pr=m;break;}}
+  if(pr)set("price",moneyIn(pr[1]),pr);
+  var price=num(o.price)||0;
+  var cash=first(new RegExp(CHK+"\\s*All\\s+Cash","i"))||first(/\b(?:this\s+is\s+an\s+)?all[\s-]+cash\s+offer\b(?![^\n]{0,20}\?)/i);
+  var loanT=null,types=[["fha","FHA"],["va","VA"],["conventional","Conventional"],["jumbo","Jumbo"]];
+  types.forEach(function(t){if(!loanT){var r=first(new RegExp(CHK+"\\s*"+t[1]+"\\b","i"));if(r)loanT=[t[0],r];}});
+  var loanAmt=first(/(?:Loan\s+One|First\s+Loan|Loan\s+Amount|New\s+Loan)[^$\n]{0,100}\$\s*([\d,]{5,})/i);
+  if(loanAmt&&price&&moneyIn(loanAmt[1])>=price)loanAmt=null;
+  if(loanT)set("financing",loanT[0],loanT[1]);
+  else if(cash&&!loanAmt){set("financing","cash",cash);}
+  else if(loanAmt){set("financing","conventional",loanAmt,"assumed");}
+  if(o.financing==="cash"){o.downPct=100;o.loan.on=false;found["loan.on"]={s:"found",snip:"Cash offer, so no loan contingency"};}
+  else if(loanAmt&&price){var d=Math.round((1-moneyIn(loanAmt[1])/price)*1000)/10;if(d>0&&d<100)set("downPct",d,loanAmt);}
+  else if((m=first(/Down\s*Payment[^$\n]{0,80}\$\s*([\d,]{4,})/i))&&price){set("downPct",Math.round(moneyIn(m[1])/price*1000)/10,m);}
+  if((m=first(/(?:Initial\s+Deposit|Earnest\s+Money(?:\s+Deposit)?|Good\s+Faith\s+Deposit)[^$\n]{0,100}\$\s*([\d,]{3,}(?:\.\d\d)?)/i)))set("emd",moneyIn(m[1]),m);
+  if((m=first(/Close\s+of\s+Escrow[^\n]{0,100}?\(?\s*(\d{1,3})\s*\)?\s*(?:\(or\s*\)\s*)?(?:calendar\s+)?Days/i)||first(/\bCOE\b[^\n]{0,80}?(\d{1,3})\s*(?:calendar\s+)?Days/i)||first(/Closing[^\n]{0,60}?(\d{1,3})\s*(?:calendar\s+)?Days/i)))set("closeDays",Number(m[1]),m);
+  if((m=first(/(?:expire[sd]?|revoked|Expiration\s+of\s+Offer)[^\n]{0,140}?(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:[^\n]{0,40}?(\d{1,2})(?::(\d\d))?\s*([AP])\.?M)?/i))){
+    var y=Number(m[3]);if(y<100)y+=2000;var h=m[4]?Number(m[4])%12+(/p/i.test(m[6])?12:0):17;
+    var pad=function(n){return ("0"+n).slice(-2);};set("expires",y+"-"+pad(m[1])+"-"+pad(m[2])+"T"+pad(h)+":"+(m[5]||"00"),m);}
+  function cont(key,label,waiveWords){
+    var w=first(new RegExp(CHK+"\\s*(?:No|Waive[sd]?)\\s+(?:"+waiveWords+")","i"))||first(new RegExp("(?:Buyer\\s+)?waive[sd]?\\s+(?:the\\s+|all\\s+)?(?:"+waiveWords+")(?:\\s+contingenc(?:y|ies))?","i"))||first(new RegExp("(?:"+waiveWords+")\\s+(?:contingency\\s+)?(?:is\\s+)?waived","i"));
+    if(w){set(key+".on",false,w);return;}
+    var d=null;label.split("||").some(function(l){d=first(new RegExp("(?:"+l+")[^\\n]{0,80}?\\(?\\s*(\\d{1,2})\\s*\\)?\\s*(?:\\(or\\s*\\)\\s*)?(?:calendar\\s+)?Days","i"));return d;});
+    if(d){set(key+".on",true,d);set(key+".days",Number(d[1]),d);}
+  }
+  cont("insp","Investigation\\s+of\\s+(?:the\\s+)?Property||Inspection\\s+Contingency||Physical\\s+Inspection||Inspection\\s+Period||Inspections?(?!\\s+prior)","inspection|investigation(?:\\s+of\\s+property)?|inspection\\s+contingency");
+  cont("appr","Appraisal\\s+Contingency||Appraisal","appraisal");
+  if(o.financing!=="cash")cont("loan","Loan(?:\\(s\\))?\\s*Contingency||Financing\\s+Contingency||Loan\\(s\\)(?![^\\n]{0,20}Application)","loan|financing");
+  if((m=first(new RegExp(CHK+"[^\\n]{0,40}Sale\\s+of\\s+Buyer'?s\\s+Property","i"))||first(/contingent\s+(?:up)?on\s+(?:the\s+)?(?:sale|close\s+of\s+escrow)\s+of\s+Buyer'?s/i)))set("saleOfHome",true,m);
+  if((m=first(/escalat/i))){set("esc.on",true,m);
+    var tail=text.slice(m.index,m.index+700);function inTail(re){var r=re.exec(tail);if(r)r.index+=m.index;return r;}
+    var inc=inTail(/(?:exceed|beat|over|above|higher\s+than)[^$\n]{0,80}?\bby\s+\$\s*([\d,]{3,})|\$\s*([\d,]{3,})\s+(?:above|over|more\s+than)\s+(?:any|the|such)/i);if(inc)set("esc.inc",moneyIn(inc[1]||inc[2]),inc);
+    var capRe=/(?:maximum|not\s+to\s+exceed|cap(?:ped)?|up\s+to|ceiling)[^$\n]{0,60}\$\s*([\d,]{6,})/gi,cap;while((cap=capRe.exec(tail))){if(moneyIn(cap[1])>=(price||0)*0.5){cap.index+=m.index;set("esc.cap",moneyIn(cap[1]),cap);break;}}}
+  if((m=first(/appraisal\s+gap[^$\n]{0,120}\$\s*([\d,]{3,})|(?:pay|cover|contribute)\s+(?:the\s+)?(?:difference|shortfall|gap)[^$\n]{0,120}?up\s+to\s+\$\s*([\d,]{3,})/i)))set("gap",moneyIn(m[1]||m[2]),m);
+  if((m=first(/(?:Seller\s+credit|credit\s+(?:to|for)\s+Buyer|Seller\s+(?:to\s+)?(?:pay|credit|contribute))[^$\n]{0,100}\$\s*([\d,]{3,})/i)))set("credit",moneyIn(m[1]),m);
+  if((m=first(/(?:rent\s*-?\s*back|Seller\s+(?:to\s+)?remain\s+in\s+possession|Seller\s+in\s+Possession)[^\n]{0,140}?(\d{1,2})\s*(?:calendar\s+)?days/i)))set("rentBack",Number(m[1]),m);
+  if((m=first(/proof\s+of\s+funds\s+(?:is\s+)?(?:attached|included|enclosed)|(?:attached|enclosed)[^\n]{0,30}proof\s+of\s+funds/i)))set("pof",true,m);
+  if((m=first(/pre-?approv(?:al|ed)\s+(?:letter\s+)?(?:is\s+)?(?:attached|included|enclosed)|has\s+been\s+pre-?approved|is\s+pre-?approved\s+for/i)))set("preapproval",true,m);
+  o.buyer=o.buyer&&!/^Offer \d+$/.test(o.buyer)?o.buyer:file.replace(/\.pdf$/i,"");
+  var critical=["price","financing","emd","closeDays","insp.on","appr.on"].concat(o.financing==="cash"?[]:["loan.on"]);
+  var missing=critical.filter(function(k){return !found[k];});
+  var pending={};Object.keys(found).forEach(function(k){pending[k]=found[k];});missing.forEach(function(k){pending[k]={s:"missing",snip:""};});
+  var doc=o.financing==="cash"?"pof":"preapproval";if(!pending[doc])pending[doc]={s:"missing",snip:"Check the attachments"};
+  o.review={file:file,pending:pending,warnings:warn};
+  return o;
+}
+function importPdfs(files){
+  var st=document.getElementById("importStatus");
+  st.textContent="Reading "+files.length+" PDF"+(files.length>1?"s":"")+"...";st.hidden=false;
+  var msgs=[];
+  return files.reduce(function(p,f){return p.then(function(){
+    return f.arrayBuffer().then(pdfToText).then(function(r){
+      if(r.text.replace(/\s/g,"").length<60&&!r.formVals){msgs.push(f.name+": no readable text. It is probably a scan or photo. Enter it by hand, or send it to Claude.");return;}
+      var o=parseOfferText(r.text,f.name);
+      if(state.offers.length===1&&!num(state.offers[0].price)&&!state.offers[0].review)state.offers=[];
+      state.offers.push(o);var n=Object.keys(o.review.pending).filter(function(k){return o.review.pending[k].s!=="missing";}).length;
+      msgs.push(f.name+": read "+n+" items. Check the highlighted fields.");
+    }).catch(function(e){msgs.push(f.name+": could not be read ("+(e&&e.message||"unknown error")+").");});
+  });},Promise.resolve()).then(function(){save();renderAll();st.innerHTML=msgs.map(esc).join("<br>");
+    var first=document.querySelector(".review");if(first)first.scrollIntoView({behavior:"smooth",block:"start"});});
+}
+function reviewBanner(o){
+  if(!o.review||!Object.keys(o.review.pending).length)return "";
+  var p=o.review.pending,ks=Object.keys(p);
+  var rows=ks.map(function(k){var it=p[k],v=k.split(".").reduce(function(a,x){return a==null?a:a[x];},o);
+    var shown=it.s==="missing"?"<em>Not found</em>":typeof v==="boolean"?(v?"Yes":"No"):k==="financing"?FIN[v]:/^(price|emd|gap|credit|esc\.inc|esc\.cap)$/.test(k)?money(num(v)):k==="downPct"?pct(num(v)):k==="expires"&&v?esc(new Date(v).toLocaleString("en-US",{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})):esc(v);
+    return '<tr class="'+it.s+'"><td>'+LABELS[k]+'</td><td>'+shown+(it.s==="assumed"?" <em>(assumed)</em>":"")+'</td><td class="snip">'+esc(it.snip)+'</td></tr>';}).join("");
+  return '<div class="review"><div class="review-head"><strong>Imported from '+esc(o.review.file)+'</strong> Check each highlighted field against the PDF. Yellow means read from the document; red means not found, so the field shows a default. Editing a field marks it checked.</div>'+
+    (o.review.warnings.length?'<div class="review-warn">'+o.review.warnings.map(esc).join("<br>")+'</div>':'')+
+    '<div class="tablewrap"><table class="rtable"><thead><tr><th>Field</th><th>Value used</th><th>Text it came from</th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<button class="primary-btn" data-act="reviewed">I checked all of these against the PDF</button></div>';
+}
+function markPending(){
+  state.offers.forEach(function(o){if(!o.review)return;var card=document.querySelector('.offer[data-id="'+o.id+'"]');if(!card)return;
+    Object.keys(o.review.pending).forEach(function(k){var el=card.querySelector('[data-k="'+k+'"]');if(!el)return;
+      var tgt=el.type==="checkbox"?(el.closest(".row")||el.closest("label")):el;if(tgt)tgt.classList.add(o.review.pending[k].s==="missing"?"chk-missing":"chk-found");});});
+}
 
 /* ---------- analysis ---------- */
 function analyze(){
@@ -320,7 +470,9 @@ function renderResults(){
   var p=state.property,list=num(p.list);
   var best=rs.slice().sort(function(a,b){return b.cert-a.cert||b.net-a.net;})[0];
   var hasCosts=num(p.commissionPct)||num(p.otherCosts);
-  var h='<h2>Summary'+(p.address?' for '+esc(p.address):'')+'</h2><div class="summary"><div class="eyebrow">What the numbers say'+(list?' · list '+money(list):'')+'</div>'+summary(rs)+'</div>';
+  var unchecked=state.offers.filter(function(o){return o.review&&Object.keys(o.review.pending).length&&num(o.price);});
+  var h='';if(unchecked.length)h+='<div class="import-status" style="margin-top:24px;border-left-color:#c0392b"><strong>Not yet checked:</strong> '+unchecked.map(function(o){return esc(o.buyer);}).join(", ")+'. These numbers came from a PDF and could be wrong until you confirm them.</div>';
+  h+='<h2>Summary'+(p.address?' for '+esc(p.address):'')+'</h2><div class="summary"><div class="eyebrow">What the numbers say'+(list?' · list '+money(list):'')+'</div>'+summary(rs)+'</div>';
 
   h+='<h2>Offers</h2><div class="cards">'+rs.map(function(r){
     var o=r.o;var sevOrder={critical:0,high:1,medium:2,low:3,plus:4,info:5};
