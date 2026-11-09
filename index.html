@@ -41,6 +41,14 @@ h2{font-size:22px;margin:0 0 16px}
 .contact a:hover{border-color:var(--gold);background:rgba(201,168,76,.15)}
 .contact svg{width:15px;height:15px;flex:none;stroke:var(--gold2)}
 .logo{width:120px;height:auto;flex:none}
+.archive{list-style:none;margin:0 0 40px;padding:0;background:var(--surface);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.archive li+li{border-top:1px solid var(--line)}
+.archive a{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:4px 16px;padding:14px 20px;text-decoration:none;color:var(--ink)}
+.archive a:hover{background:var(--bg)}
+.archive a:hover .addr{color:var(--gold)}
+.archive .addr{font-size:17px;font-weight:700}
+.archive .meta{font-size:14px;color:var(--mid)}
+.archive .meta::after{content:" \2192"}
 footer{text-align:center;font-size:13px;color:var(--faint);padding:20px 16px 32px;border-top:1px solid var(--line)}
 @media (max-width:600px){.agent{flex-direction:column;text-align:center}.contact{justify-content:center}.logo{width:104px}}
 </style>
@@ -56,10 +64,6 @@ footer{text-align:center;font-size:13px;color:var(--faint);padding:20px 16px 32p
 <main class="wrap">
   <h2 class="serif">Your pages</h2>
   <div class="cards">
-    <a class="card" href="39th-ave/">
-      <div class="band"><div class="tag">Your purchase</div><h3 class="serif">4090 39th Avenue</h3></div>
-      <div class="body">Review of the seller disclosure packet: top concerns, permits, repair costs, safety items and next steps.<span class="go">Open the review &rarr;</span></div>
-    </a>
     <a class="card" href="brunell/">
       <div class="band"><div class="tag">Your purchase</div><h3 class="serif">3615 Brunell Drive</h3></div>
       <div class="body">Review of the seller disclosure packet: top concerns, title and permits, repair costs, safety items and next steps.<span class="go">Open the review &rarr;</span></div>
@@ -69,6 +73,11 @@ footer{text-align:center;font-size:13px;color:var(--faint);padding:20px 16px 32p
       <div class="body">When offers come in on your home, compare them side by side: price, financing, contingencies, escalation and risk.<span class="go">Open the analyzer &rarr;</span></div>
     </a>
   </div>
+
+  <h2 class="serif">Archive</h2>
+  <ul class="archive">
+    <li><a href="39th-ave/"><span class="addr serif">4090 39th Avenue</span><span class="meta">Seller disclosure review</span></a></li>
+  </ul>
 
   <h2 class="serif">Your agent</h2>
   <div class="agent">
